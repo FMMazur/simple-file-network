@@ -226,10 +226,10 @@ static int server_send_check(int socket, char *writeBuffer, int code, const char
         size_t wroteCount = 0;
 
         if (messageSize) {
-            wroteCount = snprintf(writeBuffer, size - 1, COLORIZED(FRED, "error: %s\n\t%s\n"), strerror(errno),
+            wroteCount = snprintf(writeBuffer, size - 1, COLORIZED(FRED, "[-] %s\n\t%s\n"), strerror(errno),
                                   message);
         } else {
-            wroteCount = snprintf(writeBuffer, size - 1, COLORIZED(FRED, "error: %s\n\t"), strerror(errno));
+            wroteCount = snprintf(writeBuffer, size - 1, COLORIZED(FRED, "[-] %s\n\t"), strerror(errno));
         }
         writeBuffer[wroteCount] = '\0';
 
