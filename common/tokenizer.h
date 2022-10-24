@@ -17,6 +17,7 @@ typedef struct token_node_s {
 
 typedef struct token_s {
     u32 count;
+    u32 currentIdx;
 
     const char* input;
 

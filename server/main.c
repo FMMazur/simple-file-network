@@ -42,12 +42,10 @@ int main(int argc, char** argv) {
 
 
     serverInfo.root_path = arguments.root_path;
-    serverInfo.total = scandir(serverInfo.root_path, &serverInfo.directories, NULL, alphasort);
-
+    server_path_scan(&serverInfo);
     if (socket_check(serverInfo.total, "[-] directory scan failed.")) {
         goto close_server;
     }
-
     printf(COLORIZED(FGREEN, "[+] directory successfully scanned : %s\n"), serverInfo.root_path);
 
     bool quit = false;

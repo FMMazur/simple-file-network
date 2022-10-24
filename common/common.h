@@ -5,6 +5,7 @@
 #ifndef FTP_COMMON_H
 #define FTP_COMMON_H
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,11 +13,19 @@
 #include <limits.h>
 #include <inttypes.h>
 
-#include <unistd.h>
 #include <dirent.h>
+#include <libgen.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <strings.h>
+
+#pragma push_macro("__USE_XOPEN_EXTENDED")
+#undef __USE_XOPEN_EXTENDED
+#define __USE_XOPEN_EXTENDED 700
+#include <ftw.h>
+#pragma pop_macro("__USE_XOPEN_EXTENDED")
 
 #include <sys/socket.h>
 #include <arpa/inet.h>

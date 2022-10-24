@@ -2,7 +2,6 @@
 // Created by felipemazur on 22/10/22.
 //
 
-#include <libgen.h>
 #include "server.h"
 
 int server_handle_connection(server_info_t *serverInfo, int socket) {
@@ -32,20 +31,20 @@ int server_handle_connection(server_info_t *serverInfo, int socket) {
 
         token_t *tokens = tokenizer(readBuffer, " \n");
 
-        if (bytesRead <= 0 ||
-            strncasecmp(readBuffer, COMMAND_SHORT_DISCONNECT, sizeof(COMMAND_SHORT_DISCONNECT)) == 0 ||
-            strncasecmp(readBuffer, COMMAND_DISCONNECT, sizeof(COMMAND_DISCONNECT)) == 0) {
+        if (bytesRead <= 0) {
             close(socket);
             disconnect = true;
         } else {
-            const char *command = token_get_string(tokens);
+            char *command = token_get_string(tokens);
             // TODO: disable any kind of jailbreak from serverInfo.root_path
 
-            if (strncasecmp(command, COMMAND_SHORT_HELP, sizeof(COMMAND_SHORT_HELP)) == 0 ||
-                strncasecmp(command, COMMAND_HELP, sizeof(COMMAND_HELP)) == 0) {
-                send(socket, MESSAGE_HELP, sizeof(MESSAGE_HELP), 0); // send packet
-            } else if (strncasecmp(command, COMMAND_SHORT_LIST, sizeof(COMMAND_SHORT_LIST)) == 0 ||
-                       strncasecmp(command, COMMAND_LIST, sizeof(COMMAND_LIST)) == 0) {
+            if (strncasecmp(command, COMMAND_SHORT_DISCONNECT, sizeof(COMMAND_SHORT_DISCONNECT)) == 0 ||
+                strncasecmp(command, COMMAND_DISCONNECT, sizeof(COMMAND_DISCONNECT)) == 0) {
+                close(socket);
+                disconnect = true;
+            }
+            else if (strncasecmp(command, COMMAND_SHORT_LIST, sizeof(COMMAND_SHORT_LIST)) == 0 ||
+                     strncasecmp(command, COMMAND_LIST, sizeof(COMMAND_LIST)) == 0) {
                 messageSize = 0;
                 const char *directory = token_get_string(tokens);
 
@@ -55,8 +54,7 @@ int server_handle_connection(server_info_t *serverInfo, int socket) {
                 if (directory) {
                     char *path = realpath(directory, NULL);
 
-                    if (server_send_check(socket, (char *) writeBuffer, !path, "") == SERVER_SUCCESS)
-                    {
+                    if (server_send_check(socket, (char *) writeBuffer, !path, "") == SERVER_SUCCESS) {
                         totalDirectoryInfo = scandir(path, &directories, NULL, alphasort);
                         free(path);
 
@@ -111,22 +109,80 @@ int server_handle_connection(server_info_t *serverInfo, int socket) {
                 const char *directory = token_get_string(tokens);
 
                 if (!directory) {
-                    printf(MESSAGE_CREATE_DIR_NO_PATH);
-                    send(socket, MESSAGE_CREATE_DIR_NO_PATH, sizeof(MESSAGE_CREATE_DIR_NO_PATH), 0); // send packet
+                    printf(MESSAGE_DIR_NO_PATH);
+                    send(socket, MESSAGE_DIR_NO_PATH, sizeof(MESSAGE_DIR_NO_PATH), 0); // send packet
                 } else {
                     char *path = malloc(PATH_MAX);
                     if (path) {
                         size_t pathLen = snprintf(path, PATH_MAX - 1, "%s/%s", serverInfo->root_path, directory);
                         path[pathLen] = '\0';
 
-                        if (server_send_check(socket, (char *) writeBuffer, mkdir(path, 0),
-                                              "[-] Failed to create directory") == SERVER_SUCCESS) {
+                        if (SERVER_SUCCESS == server_send_check(socket, (char *) writeBuffer, mkdir(path, 0),
+                                                                "[-] Failed to create directory")) {
                             size_t wroteCount = snprintf(writeBuffer, sizeof(MESSAGE_CREATE_DIR_SUCCESS) + pathLen,
                                                          MESSAGE_CREATE_DIR_SUCCESS, path);
                             writeBuffer[wroteCount] = '\0';
 
-                            printf(NSTR("%s"), writeBuffer);
-                            send(socket, writeBuffer, wroteCount, 0);
+                            server_path_scan(serverInfo);
+                            if (SERVER_SUCCESS ==
+                                server_send_check(serverInfo->total, writeBuffer, serverInfo->total < 0,
+                                                  "[-] directory scan failed.")) {
+                                printf("%s", writeBuffer);
+                                printf(COLORIZED(FLCYAN, NSTR("[^] directory rescanned: %s")), serverInfo->root_path);
+                                send(socket, writeBuffer, wroteCount, 0);
+                            }
+                        }
+
+                        free(path);
+                    }
+                }
+            } else if (strncasecmp(command, COMMAND_SHORT_REMOVE_DIR, sizeof(COMMAND_SHORT_REMOVE_DIR)) == 0 ||
+                       strncasecmp(command, COMMAND_REMOVE_DIR, sizeof(COMMAND_REMOVE_DIR)) == 0) {
+                bool recursive = false;
+                char* directory = NULL;
+                size_t totalDirectories = 0;
+
+                // TODO: delete multiple directory
+                for (size_t i = tokens->currentIdx; i < tokens->count; ++i) {
+                    command = token_get_string(tokens);
+
+                    if (strncasecmp(command, COMMAND_OPTION_RECURSIVE, sizeof(COMMAND_OPTION_RECURSIVE)) == 0 && !recursive) {
+                        recursive = true;
+                    } else if (!directory) {
+                        directory = command;
+                    }
+                }
+
+                if (!directory) {
+                    printf(MESSAGE_DIR_NO_PATH);
+                    send(socket, MESSAGE_DIR_NO_PATH, sizeof(MESSAGE_DIR_NO_PATH), 0); // send packet
+                } else {
+                    char *path = realpath(directory, NULL);
+                    if (SERVER_SUCCESS == server_send_check(socket, (char *) writeBuffer, !path, "")) {
+                        int status = SERVER_SUCCESS;
+                        if (recursive) {
+                            status = server_send_check(socket, (char *) writeBuffer,
+                                                       server_rmrf(path) != SERVER_SUCCESS,
+                                                       "[-] Failed to recursive delete.");
+                        } else {
+                            status = server_send_check(socket, (char *) writeBuffer, rmdir(path), "");
+                        }
+
+                        if (status == SERVER_SUCCESS) {
+                            server_path_scan(serverInfo);
+
+                            if (SERVER_SUCCESS ==
+                                server_send_check(serverInfo->total, writeBuffer, serverInfo->total < 0,
+                                                  "[-] directory scan failed.")) {
+                                size_t wroteCount = snprintf(writeBuffer,
+                                                             sizeof(MESSAGE_REMOVE_DIR_SUCCESS) + strlen(path),
+                                                             MESSAGE_REMOVE_DIR_SUCCESS, path);
+                                writeBuffer[wroteCount] = '\0';
+
+                                printf("%s", writeBuffer);
+                                printf(COLORIZED(FLCYAN, NSTR("[^] directory rescanned: %s")), serverInfo->root_path);
+                                send(socket, writeBuffer, wroteCount, 0);
+                            }
                         }
 
                         free(path);
@@ -189,4 +245,18 @@ static int server_send_check(int socket, char *writeBuffer, int code, const char
     }
 
     return 0;
+}
+
+void server_path_scan(server_info_t *serverInfo) {
+    serverInfo->total = scandir(serverInfo->root_path, &serverInfo->directories, NULL, alphasort);
+}
+
+int server_dir_remove_depth_cb(const char *fpath, const struct stat *sb, int typeFlag, struct FTW *ftwbuf) {
+    int rv = remove(fpath);
+
+    return rv;
+}
+
+int server_rmrf(char *path) {
+    return nftw(path, server_dir_remove_depth_cb, 64, FTW_DEPTH | FTW_PHYS);
 }

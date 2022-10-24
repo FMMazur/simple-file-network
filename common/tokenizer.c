@@ -57,6 +57,7 @@ token_t *tokenizer(const char *string, const char* delimiters) {
 
 void token_reset(token_t* token) {
     token->current = token->head;
+    token->currentIdx = 0;
 }
 
 char* token_get_string(token_t* token) {
@@ -65,6 +66,7 @@ char* token_get_string(token_t* token) {
 
     char* string = token->current->string;
     token->current = token->current->next;
+    token->currentIdx++;
 
     return string;
 }
