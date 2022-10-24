@@ -28,7 +28,7 @@ int server_handle_connection(server_info_t *serverInfo, int socket) {
         socket_check((i32) bytesRead, "[-] Error reading command");
         readBuffer[messageSize] = '\0';
         if (bytesRead)
-            printf(COLORIZED(FCYAN, "CLIENT: %s\n"), readBuffer);
+            printf(COLORIZED(FCYAN, "CLIENT: %s"), readBuffer);
 
         token_t *tokens = tokenizer(readBuffer, " \n");
 
@@ -114,19 +114,18 @@ int server_handle_connection(server_info_t *serverInfo, int socket) {
                     printf(MESSAGE_CREATE_DIR_NO_PATH);
                     send(socket, MESSAGE_CREATE_DIR_NO_PATH, sizeof(MESSAGE_CREATE_DIR_NO_PATH), 0); // send packet
                 } else {
-                    size_t baseLen = strlen(serverInfo->root_path);
-                    size_t directoryLen = strlen(directory);
                     char *path = malloc(PATH_MAX);
                     if (path) {
                         size_t pathLen = snprintf(path, PATH_MAX - 1, "%s/%s", serverInfo->root_path, directory);
-                        path[pathLen + 1] = '\0';
+                        path[pathLen] = '\0';
 
                         if (server_send_check(socket, (char *) writeBuffer, mkdir(path, 0),
                                               "[-] Failed to create directory") == SERVER_SUCCESS) {
-                            size_t wroteCount = snprintf(writeBuffer, pathLen + 1,
+                            size_t wroteCount = snprintf(writeBuffer, sizeof(MESSAGE_CREATE_DIR_SUCCESS) + pathLen,
                                                          MESSAGE_CREATE_DIR_SUCCESS, path);
+                            writeBuffer[wroteCount] = '\0';
 
-                            printf(NSTR("[+] %s"), writeBuffer);
+                            printf(NSTR("%s"), writeBuffer);
                             send(socket, writeBuffer, wroteCount, 0);
                         }
 
