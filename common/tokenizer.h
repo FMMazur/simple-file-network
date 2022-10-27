@@ -1,5 +1,5 @@
 //
-// Created by felipemanzur on 22/10/22.
+// Created by felipemazur on 22/10/22.
 //
 
 #ifndef FTP_TOKENIZER_H
@@ -113,13 +113,12 @@ void token_free(token_t **token) {
         head = tmp;
     }
 
-    //token->input = NULL;
-    //token->current = NULL;
-    //token->head = NULL;
+    token->input = NULL;
+    token->current = NULL;
+    token->head = NULL;
 
     free(*token);
 }
-
 #endif
 
 #endif //FTP_TOKENIZER_H

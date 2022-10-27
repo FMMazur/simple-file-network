@@ -1,5 +1,5 @@
 //
-// Created by felipemanzur on 22/10/22.
+// Created by felipemazur on 22/10/22.
 //
 
 #ifndef FTP_COMMON_H
@@ -79,7 +79,7 @@
 
 #define COLORIZED(color, text) color text MDEFAULT
 
-static int socket_check(int code, const char *message) {
+static int socket_check(size_t code, const char *message) {
     if (code == SOCKET_ERROR) {
         printf(COLORIZED(FRED, "[-] Socket Error: %s\n\t%s\n"), strerror(errno), message);
         return errno;
