@@ -8,9 +8,21 @@
 #include "common.h"
 
 #define SERVER_BACKLOG 10
+
+#define SERVER_SUCCESS 0
+#define SERVER_ERROR (-1)
 #define SERVER_QUIT 100001
 #define SERVER_DISCONNECT 100002
-#define SERVER_SUCCESS 0
+
+#define SERVER_FILE_INFO_WAIT   (u8) 0b00000001
+#define SERVER_FILE_INFO_OK     (u8) 0b00000010
+#define SERVER_FILE_INFO_ERROR  (u8) 0b00000100
+#define SERVER_FILE_WAITING     (u8) 0b00001000
+#define SERVER_FILE_PENDING     (u8) 0b00010000
+#define SERVER_FILE_OK          (u8) 0b01000000
+#define SERVER_FILE_FAILED      (u8) 0b10000000
+
+#define MESSAGE_FILE_INFO "name: %s size: %s"
 
 #define COMMAND(command) command
 #define COMMAND_HELP COMMAND("help")
@@ -22,7 +34,11 @@
 #define COMMAND_CREATE_DIR COMMAND("mkdir")
 #define COMMAND_SHORT_CREATE_DIR COMMAND("mk")
 #define COMMAND_REMOVE_DIR COMMAND("rmdir")
-#define COMMAND_SHORT_REMOVE_DIR " "
+#define COMMAND_SHORT_REMOVE_DIR COMMAND(" ")
+#define COMMAND_SEND_FILE COMMAND("send")
+#define COMMAND_SHORT_SEND_FILE COMMAND("s")
+#define COMMAND_REMOVE_FILE COMMAND(" ")
+#define COMMAND_SHORT_REMOVE_FILE COMMAND("rm")
 
 #define COMMAND_OPTION_RECURSIVE "-r"
 
@@ -32,15 +48,20 @@
 #define MESSAGE_DIR_NO_PATH COLORIZED(FLRED, NSTR("[-] Missing PATH"))
 #define MESSAGE_CREATE_DIR_SUCCESS COLORIZED(FLGREEN, NSTR("[+] Directory created: %s"))
 #define MESSAGE_REMOVE_DIR_SUCCESS COLORIZED(FLMAGENTA, NSTR("[-] Directory removed: %s"))
+#define MESSAGE_SEND_FILE_SUCCESS COLORIZED(FLGREEN, NSTR("[+] File created: %s"))
+#define MESSAGE_REMOVE_FILE_SUCCESS COLORIZED(FLMAGENTA, NSTR("[-] File removed: %s"))
 #define MESSAGE_LIST_DIRECTORY NSTR("List:")
 // TODO: align from '-'
 #define MESSAGE_HELP NSTR("Commands:") \
-    NSTR(COMMAND_SHORT_HELP " " COMMAND_HELP                " \t\t - shows this message"            )\
-    NSTR(COMMAND_SHORT_DISCONNECT " " COMMAND_DISCONNECT    " \t - disconnect from the server"      )\
-    NSTR(COMMAND_SHORT_LIST " " COMMAND_LIST                " \t - list directory content"          )\
-    NSTR(COMMAND_SHORT_CREATE_DIR " " COMMAND_CREATE_DIR    " PATH \t - create directory"           )\
-    NSTR(COMMAND_SHORT_REMOVE_DIR "  " COMMAND_REMOVE_DIR   " PATH \t - remove directory"           )\
-    NSTR(                                                   "\t\t [-r] for recursive remove"      )
+    NSTR(COMMAND_SHORT_HELP        "  " COMMAND_HELP          " \t - shows this message"               )\
+    NSTR(COMMAND_SHORT_DISCONNECT  "  " COMMAND_DISCONNECT    " \t - disconnect from the server"       )\
+    NSTR(COMMAND_SHORT_LIST        " " COMMAND_LIST           " \t - list directory content"           )\
+    NSTR(COMMAND_SHORT_CREATE_DIR  " " COMMAND_CREATE_DIR     " PATH \t - create directory"            )\
+    NSTR(COMMAND_SHORT_REMOVE_DIR  "  " COMMAND_REMOVE_DIR    " PATH \t - remove directory"            )\
+    NSTR(                                                     "\t\t [-r] for recursive remove"         )\
+    NSTR(COMMAND_SHORT_SEND_FILE   "  " COMMAND_SEND_FILE     " FILE \t - to send a file"              )\
+    NSTR(COMMAND_SHORT_REMOVE_FILE "    " COMMAND_REMOVE_FILE " PATH \t - remove a directory or file"  )
+
 typedef struct dirent dirent;
 
 typedef struct {
