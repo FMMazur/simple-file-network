@@ -238,7 +238,7 @@ int server_handle_connection(server_info_t *serverInfo, int socket)
                 size_t pathLen = snprintf(finalFileName, PATH_MAX - 1, "%s/%s", serverInfo->root_path, filename);
                 finalFileName[pathLen] = '\0';
 
-                FILE *receivedFile = fopen(finalFileName, "w");
+                FILE *receivedFile = fopen(finalFileName, "wb");
 
                 if (SERVER_SUCCESS
                     != server_send_check(socket, writeBuffer, receivedFile == NULL, "[-] on create server side file")) {
